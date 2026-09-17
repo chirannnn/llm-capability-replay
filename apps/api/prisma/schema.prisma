@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Capability {
+  id              String   @id @default(uuid())
+  name            String
+  description     String
+  version         Int
+  tenantId        String?  @map("tenant_id")
+  isGlobal        Boolean  @default(false)
+  
+  target          Json
+  inputs          Json
+  steps           Json
+  outputs         Json
+  safety          Json
+  
+  versionMetadata Json
+  
+  createdAt       DateTime @default(now())
+  createdBy       String
+  updatedAt       DateTime @updatedAt
+  
+  runs            AutomationRun[]
+  
+  @@unique([name, version, tenantId])
+  @@index([tenantId])
+  @@map("capabilities")
+}
+
+model AutomationRun {
+  id            String   @id @default(uuid())
+  capabilityId  String   @map("capability_id")
+  capability    Capability @relation(fields: [capabilityId], references: [id])
+  
+  tenantId      String?  @map("tenant_id")
+  status        String
+  
+  inputValues   Json
+  outputValues  Json?
+  
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  
+  steps         RunStep[]
+  handoffs      HumanHandoff[]
+  
+  @@index([capabilityId])
+  @@index([tenantId])
+  @@map("automation_runs")
+}
+
+model RunStep {
+  id            String   @id @default(uuid())
+  runId         String   @map("run_id")
+  run           AutomationRun @relation(fields: [runId], references: [id])
+  
+  stepId        String   @map("step_id")
+  order         Int
+  
+  status        String
+  
+  actionTaken   Json?
+  result        Json?
+  
+  errorType     String?
+  errorMessage  String?
+  retryCount    Int      @default(0)
+  
+  evidencePath  String?
+  
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  @@index([runId])
+  @@map("run_steps")
+}
+
+model HumanHandoff {
+  id            String   @id @default(uuid())
+  runId         String   @map("run_id")
+  run           AutomationRun @relation(fields: [runId], references: [id])
+  
+  stepId        String?  @map("step_id")
+  reason        String
+  
+  status        String
+  
+  context       Json
+  instructions  String?
+  
+  handedOffAt   DateTime @default(now())
+  resumedAt     DateTime?
+  completedBy   String?
+  
+  @@index([runId])
+  @@map("human_handoffs")
+}

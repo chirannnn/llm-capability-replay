@@ -1,0 +1,23 @@
+{
+  "name": "llm-capability-replay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLM discovers UI workflows once; deterministic replay runs them afterward",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter api dev",
+    "build": "pnpm --filter api build",
+    "test": "pnpm --filter api test",
+    "lint": "pnpm --filter api lint",
+    "format": "pnpm --filter api format",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed": "pnpm --filter api db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
+  "packageManager": "pnpm@8.10.0"
+}
