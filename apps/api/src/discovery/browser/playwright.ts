@@ -1,6 +1,7 @@
-import { chromium, Browser, Page, Locator } from 'playwright';
+import { chromium, Browser, Page } from 'playwright';
 import { ExecutedAction, ActionResult } from '../actions/schema.js';
 import { UIObservation, VisibleElement, createObservation } from '../observation/types.js';
+import { executeNavigate, executeClick, executeType, executeSelect, executeWait, executeExtract } from '../../browser/shared.js';
 
 /**
  * Playwright browser client for discovery
@@ -69,193 +70,42 @@ export class PlaywrightBrowser {
    * Execute navigate action
    */
   private async executeNavigate(action: ExecutedAction): Promise<ActionResult> {
-    if (!action.value) {
-      return {
-        success: false,
-        description: 'Navigate action requires URL',
-        error: 'Missing URL value',
-      };
-    }
-
-    await this.page!.goto(action.value, { waitUntil: 'networkidle', timeout: action.timeout });
-    return {
-      success: true,
-      description: `Navigated to ${action.value}`,
-    };
+    return executeNavigate(this.page!, action.value || '', action.timeout);
   }
 
   /**
    * Execute click action
    */
   private async executeClick(action: ExecutedAction): Promise<ActionResult> {
-    const locator = await this.findElement(action.target);
-    if (!locator) {
-      return {
-        success: false,
-        description: 'Element not found',
-        error: `Could not find element with target: ${JSON.stringify(action.target)}`,
-      };
-    }
-
-    await locator.click({ timeout: action.timeout });
-    return {
-      success: true,
-      description: `Clicked on element`,
-    };
+    return executeClick(this.page!, action.target, action.timeout);
   }
 
   /**
    * Execute type action
    */
   private async executeType(action: ExecutedAction): Promise<ActionResult> {
-    if (!action.value) {
-      return {
-        success: false,
-        description: 'Type action requires text value',
-        error: 'Missing text value',
-      };
-    }
-
-    const locator = await this.findElement(action.target);
-    if (!locator) {
-      return {
-        success: false,
-        description: 'Element not found',
-        error: `Could not find element with target: ${JSON.stringify(action.target)}`,
-      };
-    }
-
-    await locator.fill(action.value);
-    return {
-      success: true,
-      description: `Typed text into element`,
-    };
+    return executeType(this.page!, action.target, action.value || '', action.timeout);
   }
 
   /**
    * Execute select action
    */
   private async executeSelect(action: ExecutedAction): Promise<ActionResult> {
-    if (!action.value) {
-      return {
-        success: false,
-        description: 'Select action requires option value',
-        error: 'Missing option value',
-      };
-    }
-
-    const locator = await this.findElement(action.target);
-    if (!locator) {
-      return {
-        success: false,
-        description: 'Element not found',
-        error: `Could not find element with target: ${JSON.stringify(action.target)}`,
-      };
-    }
-
-    await locator.selectOption(action.value);
-    return {
-      success: true,
-      description: `Selected option from dropdown`,
-    };
+    return executeSelect(this.page!, action.target, action.value || '', action.timeout);
   }
 
   /**
    * Execute wait action
    */
   private async executeWait(action: ExecutedAction): Promise<ActionResult> {
-    await this.page!.waitForTimeout(action.timeout);
-    return {
-      success: true,
-      description: `Waited for ${action.timeout}ms`,
-    };
+    return executeWait(this.page!, action.timeout);
   }
 
   /**
    * Execute extract action
    */
   private async executeExtract(action: ExecutedAction): Promise<ActionResult> {
-    const locator = await this.findElement(action.target);
-    if (!locator) {
-      return {
-        success: false,
-        description: 'Element not found',
-        error: `Could not find element with target: ${JSON.stringify(action.target)}`,
-      };
-    }
-
-    const text = await locator.textContent();
-    return {
-      success: true,
-      description: 'Extracted text from element',
-      data: text,
-    };
-  }
-
-  /**
-   * Find element using semantic targeting (Locator-based)
-   * Priority: testId > accessibleName + role > visibleText + role > cssSelector
-   */
-  private async findElement(target: {
-    testId?: string;
-    accessibleName?: string;
-    role?: string;
-    visibleText?: string;
-    cssSelector?: string;
-  }): Promise<Locator | null> {
-    if (!this.page) {
-      return null;
-    }
-
-    // Try test ID first
-    if (target.testId) {
-      try {
-        const locator = this.page.locator(`[data-testid="${target.testId}"]`);
-        if (await locator.count() > 0) {
-          return locator;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Try accessible name + role
-    if (target.accessibleName && target.role) {
-      try {
-        const locator = this.page.getByRole(target.role as 'button' | 'link' | 'textbox' | 'combobox', { name: target.accessibleName });
-        if (await locator.count() > 0) {
-          return locator;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Try visible text + role
-    if (target.visibleText && target.role) {
-      try {
-        const locator = this.page.getByRole(target.role as 'button' | 'link' | 'textbox' | 'combobox', { name: target.visibleText });
-        if (await locator.count() > 0) {
-          return locator;
-        }
-      } catch {
-        // Continue to next strategy
-      }
-    }
-
-    // Try CSS selector as fallback
-    if (target.cssSelector) {
-      try {
-        const locator = this.page.locator(target.cssSelector);
-        if (await locator.count() > 0) {
-          return locator;
-        }
-      } catch {
-        // Element not found
-      }
-    }
-
-    return null;
+    return executeExtract(this.page!, action.target, action.timeout);
   }
 
   /**

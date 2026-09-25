@@ -206,6 +206,9 @@ export const CapabilityArtifactSchema = z.object({
 
 export type CapabilityArtifact = z.infer<typeof CapabilityArtifactSchema>;
 
+// Re-export ActionType for convenience
+export { ActionType } from './types.js';
+
 /**
  * Validation function for capability artifacts
  */

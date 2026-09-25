@@ -50,3 +50,11 @@ export enum BackoffStrategy {
   LINEAR = 'linear',
   EXPONENTIAL = 'exponential',
 }
+
+// Retry policy type (for re-export)
+export type RetryPolicy = {
+  maxAttempts: number;
+  backoffStrategy: BackoffStrategy;
+  backoffMs: number;
+  retryableErrors?: string[];
+};
