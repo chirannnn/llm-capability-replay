@@ -6,7 +6,9 @@ import { ActionExecutor } from './action-executor.js';
 import { CheckpointEvaluator } from './checkpoint.js';
 import { ErrorClassifier } from './error-classifier.js';
 import { RetryHandler } from './retry-handler.js';
-import { initializeReplayEvidenceCollector } from './evidence-collector.js';
+import { initializeReplayEvidenceCollector, ReplayEvidenceCollector } from './evidence-collector.js';
+import { initializeHandoffManager } from '../handoff/manager.js';
+import { HandoffReason } from '../handoff/types.js';
 
 /**
  * Replay engine for deterministic execution
@@ -18,13 +20,102 @@ export class ReplayEngine {
   private errorClassifier: ErrorClassifier;
   private retryHandler: RetryHandler;
   private targetOrigin: string;
+  private handoffManager: ReturnType<typeof initializeHandoffManager>;
+  private enableHandoff: boolean;
 
-  constructor() {
+  constructor(enableHandoff: boolean = false) {
     this.actionExecutor = new ActionExecutor();
     this.checkpointEvaluator = new CheckpointEvaluator();
     this.errorClassifier = new ErrorClassifier();
     this.retryHandler = new RetryHandler();
     this.targetOrigin = '';
+    this.handoffManager = initializeHandoffManager();
+    this.enableHandoff = enableHandoff;
+  }
+
+  /**
+   * Trigger human handoff
+   */
+  private async triggerHandoff(
+    runId: string,
+    capabilityName: string,
+    capabilityVersion: number,
+    currentStep: string,
+    goal: string,
+    reason: HandoffReason,
+    evidencePath: string,
+    checkpointCondition?: string,
+    evidenceCollector?: ReplayEvidenceCollector
+  ): Promise<{ accepted: boolean; checkpointPassed: boolean }> {
+    const handoffContext = await this.handoffManager.createHandoff(
+      runId,
+      capabilityName,
+      capabilityVersion,
+      currentStep,
+      goal,
+      reason,
+      evidencePath,
+      checkpointCondition
+    );
+
+    if (evidenceCollector) {
+      evidenceCollector.logHandoffCreated({
+        runId,
+        reason: handoffContext.reason,
+        currentStep: handoffContext.currentStep,
+        currentUrl: handoffContext.currentUrl,
+      });
+    }
+
+    await this.handoffManager.transitionToHumanControl();
+
+    if (evidenceCollector) {
+      evidenceCollector.logHandoffStarted({ runId });
+    }
+
+    // Define resume check using checkpoint condition
+    const resumeCheck = async (): Promise<boolean> => {
+      if (!checkpointCondition) {
+        return true; // No checkpoint condition, allow resume
+      }
+
+      const page = this.handoffManager.getPage();
+      if (!page) {
+        return false;
+      }
+
+      const checkpointResult = await this.checkpointEvaluator.evaluate(
+        page,
+        checkpointCondition,
+        []
+      );
+
+      return checkpointResult.passed;
+    };
+
+    const handoffResult = await this.handoffManager.waitForHumanIntervention(resumeCheck);
+
+    if (evidenceCollector) {
+      evidenceCollector.logHandoffEnded({
+        runId,
+        humanAction: handoffResult.humanAction,
+      });
+    }
+
+    await this.handoffManager.transitionToResuming();
+    await this.handoffManager.transitionToAutomating();
+
+    if (evidenceCollector) {
+      evidenceCollector.logHandoffResumed({
+        runId,
+        checkpointPassed: handoffResult.checkpointPassed,
+      });
+    }
+
+    return {
+      accepted: handoffResult.accepted,
+      checkpointPassed: handoffResult.checkpointPassed,
+    };
   }
 
   /**
@@ -100,6 +191,15 @@ export class ReplayEngine {
 
     // Initialize browser
     await this.actionExecutor.initialize();
+
+    // Initialize handoff manager with browser session if enabled
+    if (this.enableHandoff) {
+      const page = this.actionExecutor.getPage();
+      const browserContext = this.actionExecutor.getBrowserContext();
+      if (page && browserContext) {
+        this.handoffManager.initialize(page, browserContext);
+      }
+    }
 
     // Sort steps by order
     const sortedSteps = [...validArtifact.steps].sort((a, b) => a.order - b.order);
@@ -261,6 +361,29 @@ export class ReplayEngine {
             result.success = retryResult.success;
             result.error = retryResult.error;
             result.description = retryResult.description;
+
+            // If retry still failed and handoff is enabled, trigger handoff
+            if (!result.success && this.enableHandoff) {
+              const handoffResult = await this.triggerHandoff(
+                runId,
+                validArtifact.metadata.name,
+                validArtifact.version.version,
+                step.stepId,
+                validArtifact.metadata.description || 'Unknown goal',
+                HandoffReason.REPEATED_RECOVERABLE_FAILURE,
+                evidenceCollector.getSessionPath(),
+                step.checkpoint?.condition,
+                evidenceCollector
+              );
+
+              if (handoffResult.accepted && handoffResult.checkpointPassed) {
+                // Retry one more time after human intervention
+                const finalRetry = await this.actionExecutor.executeAction(stepAction);
+                result.success = finalRetry.success;
+                result.error = finalRetry.error;
+                result.description = finalRetry.description;
+              }
+            }
           }
         }
 
@@ -398,6 +521,6 @@ export class ReplayEngine {
 /**
  * Initialize replay engine
  */
-export function initializeReplayEngine(): ReplayEngine {
-  return new ReplayEngine();
+export function initializeReplayEngine(enableHandoff: boolean = false): ReplayEngine {
+  return new ReplayEngine(enableHandoff);
 }

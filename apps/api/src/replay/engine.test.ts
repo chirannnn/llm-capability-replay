@@ -7,7 +7,7 @@ describe('Replay Engine', () => {
   let engine: ReplayEngine;
 
   beforeEach(() => {
-    engine = initializeReplayEngine();
+    engine = initializeReplayEngine(false); // Initialize without handoff for most tests
   });
 
   afterEach(() => {
@@ -129,5 +129,15 @@ describe('Replay Engine', () => {
     expect(result.failure?.category).toBe(ErrorCategory.HARD_FAILURE);
     expect(result.failure?.message).toContain('not allowed by safety policy');
   }, 10000); // Add 10 second timeout
+
+  it('should initialize with handoff disabled by default', () => {
+    const defaultEngine = initializeReplayEngine();
+    expect(defaultEngine).toBeDefined();
+  });
+
+  it('should initialize with handoff enabled when requested', () => {
+    const handoffEngine = initializeReplayEngine(true);
+    expect(handoffEngine).toBeDefined();
+  });
 });
 

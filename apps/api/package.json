@@ -16,7 +16,8 @@
     "db:generate": "prisma generate",
     "discovery": "tsx src/discovery/cli.ts",
     "discovery:demo": "tsx src/discovery/demo.ts",
-    "replay": "tsx src/replay/cli.ts"
+    "replay": "tsx src/replay/cli.ts",
+    "handoff:demo": "tsx src/handoff/cli.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",

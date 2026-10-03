@@ -53,6 +53,51 @@ export class ReplayEvidenceCollector {
   }
 
   /**
+   * Log handoff created event
+   */
+  logHandoffCreated(context: { runId: string; reason: string; currentStep: string; currentUrl: string }): void {
+    this.logEvent({
+      event: 'handoff_created',
+      runId: context.runId,
+      reason: context.reason,
+      currentStep: context.currentStep,
+      currentUrl: context.currentUrl,
+    });
+  }
+
+  /**
+   * Log handoff started event
+   */
+  logHandoffStarted(context: { runId: string }): void {
+    this.logEvent({
+      event: 'handoff_started',
+      runId: context.runId,
+    });
+  }
+
+  /**
+   * Log handoff ended event
+   */
+  logHandoffEnded(context: { runId: string; humanAction?: string }): void {
+    this.logEvent({
+      event: 'handoff_ended',
+      runId: context.runId,
+      humanAction: context.humanAction,
+    });
+  }
+
+  /**
+   * Log handoff resumed event
+   */
+  logHandoffResumed(context: { runId: string; checkpointPassed: boolean }): void {
+    this.logEvent({
+      event: 'handoff_resumed',
+      runId: context.runId,
+      checkpointPassed: context.checkpointPassed,
+    });
+  }
+
+  /**
    * Save executed steps
    */
   saveSteps(steps: ExecutedStep[]): void {

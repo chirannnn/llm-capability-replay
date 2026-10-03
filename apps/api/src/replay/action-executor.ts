@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from 'playwright';
+import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { UIAction } from '../capability/schema.js';
 import { ActionType } from '../capability/types.js';
 import { TargetResolver } from './target-resolver.js';
@@ -10,6 +10,7 @@ import { TargetResolver } from './target-resolver.js';
 export class ActionExecutor {
   private browser: Browser | null = null;
   private page: Page | null = null;
+  private browserContext: BrowserContext | null = null;
   private targetResolver: TargetResolver;
 
   constructor() {
@@ -21,7 +22,8 @@ export class ActionExecutor {
    */
   async initialize(): Promise<void> {
     this.browser = await chromium.launch({ headless: true });
-    this.page = await this.browser.newPage();
+    this.browserContext = await this.browser.newContext();
+    this.page = await this.browserContext.newPage();
   }
 
   /**
@@ -318,6 +320,13 @@ export class ActionExecutor {
   }
 
   /**
+   * Get browser context for handoff manager
+   */
+  getBrowserContext(): BrowserContext | null {
+    return this.browserContext;
+  }
+
+  /**
    * Close browser
    */
   async close(): Promise<void> {
@@ -325,6 +334,7 @@ export class ActionExecutor {
       await this.browser.close();
       this.browser = null;
       this.page = null;
+      this.browserContext = null;
     }
   }
 }
