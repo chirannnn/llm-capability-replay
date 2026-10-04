@@ -14,6 +14,7 @@ const envSchema = z.object({
   MARINER_PRO_URL: z.string().url().optional(),
   DISCOVERY_MAX_STEPS: z.string().transform(Number).default('20'),
   DISCOVERY_TIMEOUT: z.string().transform(Number).default('300000'),
+  HEADLESS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

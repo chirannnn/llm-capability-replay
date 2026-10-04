@@ -2,6 +2,7 @@ import { chromium, Browser, Page } from 'playwright';
 import { ExecutedAction, ActionResult } from '../actions/schema.js';
 import { UIObservation, VisibleElement, createObservation } from '../observation/types.js';
 import { executeNavigate, executeClick, executeType, executeSelect, executeWait, executeExtract } from '../../browser/shared.js';
+import { env } from '../../utils/env.js';
 
 /**
  * Playwright browser client for discovery
@@ -14,7 +15,8 @@ export class PlaywrightBrowser {
    * Initialize browser
    */
   async initialize(): Promise<void> {
-    this.browser = await chromium.launch({ headless: true });
+    const headless = env.HEADLESS !== 'false';
+    this.browser = await chromium.launch({ headless });
     this.page = await this.browser.newPage();
   }
 
