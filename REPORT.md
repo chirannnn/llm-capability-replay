@@ -27,6 +27,13 @@ The system is organized into three main phases:
 - Checkpoint-gated resume (automation resumes only if checkpoint passes)
 - Evidence collection for handoff events
 
+**Operator UI & API (Final Implementation)**
+- React-based operator UI for goal input, status display, and live event streaming
+- Express API endpoints for discovery and replay with Server-Sent Events (SSE)
+- Headed browser mode support for live visibility during demonstrations
+- API integration tests for request validation and event delivery
+- Live event streaming: discovery_started, observation, llm_action, action_started, action_completed, checkpoint, retry, failure, handoff_created, human_control, resume, completed
+
 **Architecture Diagram:**
 
 ```
@@ -255,10 +262,11 @@ AUTOMATING
 
 **Human Control:**
 - CLI-based operator mechanism (simple for take-home)
+- React-based operator UI for goal input and status display
 - Human prompted with: reason, current URL, goal
 - Human can interact with preserved browser session
-- Human presses Enter to signal completion
-- No web UI (intentionally excluded from take-home scope)
+- Human presses Enter to signal completion (CLI) or UI indicates handoff state
+- Operator UI shows live event streaming from API
 
 **Checkpoint:**
 - Resume condition uses existing Phase 2 checkpoint from artifact
@@ -338,6 +346,7 @@ The following features were intentionally excluded from this take-home focused o
 **Polished Frontend:**
 - Web UI for goal entry, artifact review, handoff management
 - **Why:** CLI-based interface is sufficient to demonstrate the core functionality
+- **Note:** A minimal React-based operator UI was added for demonstration purposes, but it intentionally remains small and functional, not a production SaaS application
 
 **Advanced Multi-Tenant Infrastructure:**
 - Database-backed tenant isolation, per-tenant routing, tenant-scoped storage
@@ -386,3 +395,6 @@ Evidence structure is documented in `docs/evidence.md`. Evidence is organized by
 - Handoff evidence: handoff events logged in replay logs
 
 Evidence is excluded from git via .gitignore to avoid committing sensitive data or large binary files.
+
+**Live Evidence Limitation:**
+Real live discovery and replay evidence requires valid `OPENAI_API_KEY` and `MARINER_PRO_URL` environment variables. These are not available in the take-home environment, so genuine live evidence cannot be generated automatically. The implementation is correct and tested with mocks. See `docs/live-evidence-limitation.md` for details.
