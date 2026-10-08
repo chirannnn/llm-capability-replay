@@ -37,6 +37,9 @@ MARINER_PRO_URL=https://your-target-application.com
 DISCOVERY_MAX_STEPS=20
 DISCOVERY_TIMEOUT=300000
 
+# Optional: Run browser in headed mode for live visibility
+HEADLESS=false
+
 # Database (PostgreSQL via Docker Compose)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5433/llm_capability_replay?schema=public"
 
@@ -49,6 +52,7 @@ LOG_LEVEL=info
 **Important:**
 - `OPENAI_API_KEY` is required for LLM discovery
 - `MARINER_PRO_URL` should point to your target application
+- `HEADLESS=false` can be set to run browser in visible mode for demonstration
 - Do not commit real API keys or credentials
 
 ## Database

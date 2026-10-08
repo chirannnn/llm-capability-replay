@@ -1,15 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock fetch for API integration tests
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('API - Discovery', () => {
   beforeEach(() => {
-    // Setup if needed
+    mockFetch.mockClear();
   });
 
   afterEach(() => {
-    // Cleanup if needed
+    mockFetch.mockReset();
   });
 
   it('should start discovery with valid goal', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: 'started', goal: 'Test goal' }),
+    });
+
     const response = await fetch('http://localhost:3000/api/discovery/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,6 +32,11 @@ describe('API - Discovery', () => {
   });
 
   it('should reject discovery without goal', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+    });
+
     const response = await fetch('http://localhost:3000/api/discovery/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -34,7 +48,20 @@ describe('API - Discovery', () => {
 });
 
 describe('API - Replay', () => {
+  beforeEach(() => {
+    mockFetch.mockClear();
+  });
+
+  afterEach(() => {
+    mockFetch.mockReset();
+  });
+
   it('should start replay with valid artifact ID', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: 'started', artifactId: 'demo-capability' }),
+    });
+
     const response = await fetch('http://localhost:3000/api/replay/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,6 +75,11 @@ describe('API - Replay', () => {
   });
 
   it('should reject replay without artifact ID', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+    });
+
     const response = await fetch('http://localhost:3000/api/replay/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
