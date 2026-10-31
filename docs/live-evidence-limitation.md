@@ -9,12 +9,15 @@ Real live LLM evidence could not be generated because:
 - The Phase 3 LLM discovery implementation is correct and tested with mocks
 - The Phase 4 deterministic replay implementation is correct and tested
 - The Phase 5 handoff implementation is correct and tested
-- All 184 automated tests pass
+- All 189 automated tests pass
+- The operator UI is connected to the real discovery and replay orchestrators
 - However, a real live run against the actual target application with the actual OpenAI API cannot be automatically performed in this environment
 
-**What was done instead:**
-- The frontend operator UI simulates events to demonstrate the architecture
-- The API endpoints provide SSE event streaming infrastructure
+**What is implemented:**
+- The frontend operator UI calls the real discovery and replay orchestrators via API
+- The API endpoints provide SSE event streaming from actual backend execution
+- Discovery will fail with a clear error message if OPENAI_API_KEY is missing
+- Replay can run without credentials using the Mariner Pro example artifact
 - The headed mode support (`HEADLESS=false`) enables live browser visibility when credentials are available
 - The evidence structure is documented in `docs/evidence.md`
 
