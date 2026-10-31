@@ -216,10 +216,10 @@ Required environment variables in `apps/api/.env`:
 2. Start frontend: `pnpm dev:web`
 3. Open http://localhost:5173
 4. Enter a goal
-5. Click "Start Discovery" to see simulated events (demo mode)
-6. Click "Run Replay" to see simulated replay events (demo mode)
+5. Click "Start Discovery" to run real LLM discovery (requires OPENAI_API_KEY and target URL)
+6. Click "Run Replay" to run deterministic replay
 
-**Note:** The operator UI currently demonstrates the interface design with simulated events for demonstration purposes. Real live event streaming from actual backend execution requires a running API server with valid OpenAI credentials and target URL. For genuine LLM discovery, use the CLI commands below.
+**Note:** The operator UI is now connected to the real discovery and replay orchestrators. Discovery requires valid `OPENAI_API_KEY` and target URL in `.env`. Replay uses the Mariner Pro example artifact.
 
 **CLI Discovery Demo:**
 ```bash
@@ -243,7 +243,7 @@ Run all tests:
 pnpm test
 ```
 
-The project has 188 automated tests covering:
+The project has 189 automated tests covering:
 - Capability schema validation
 - Discovery action schemas
 - Observation sanitization (sensitive data redaction)
@@ -352,7 +352,7 @@ Every phase produces structured evidence. Evidence is gitignored to avoid commit
 
 5. **Screenshot Evidence:** Screenshot generation is not automatic for all actions. The infrastructure exists but is not triggered in all cases.
 
-6. **Operator UI Simulation:** The operator UI currently demonstrates the interface design with simulated events for demonstration purposes. Real live event streaming from actual backend execution requires a running API server with valid OpenAI credentials and target URL. For genuine LLM discovery, use the CLI commands.
+6. **Operator UI Integration:** The operator UI is now connected to the real discovery and replay orchestrators. Discovery requires valid `OPENAI_API_KEY` and target URL in `.env`. If credentials are not available, the UI will display an error message. Replay uses the Mariner Pro example artifact and can run without credentials.
 
 ## Take-Home Notes
 

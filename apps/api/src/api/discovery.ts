@@ -1,5 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { EventEmitter } from 'events';
+import { runDiscovery } from '../discovery/orchestrator.js';
+import { generateArtifact } from '../discovery/artifact/generator.js';
+import { env } from '../utils/env.js';
 
 const router = Router() as Router;
 const discoveryEvents = new EventEmitter();
@@ -29,66 +32,54 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
     return res.status(400).json({ error: 'Goal is required' });
   }
 
+  // Check if OpenAI API key is available
+  if (!env.OPENAI_API_KEY) {
+    return res.status(400).json({ 
+      error: 'OPENAI_API_KEY is required for discovery',
+      message: 'Set OPENAI_API_KEY in .env to enable LLM discovery'
+    });
+  }
+
+  // Use provided targetUrl or default to MARINER_PRO_URL
+  const url = targetUrl || env.MARINER_PRO_URL;
+  if (!url) {
+    return res.status(400).json({ 
+      error: 'Target URL is required',
+      message: 'Provide targetUrl in request or set MARINER_PRO_URL in .env'
+    });
+  }
+
   // Emit discovery started event
   discoveryEvents.emit('discovery-event', {
     type: 'discovery_started',
     timestamp: new Date().toISOString(),
     goal,
-    targetUrl,
+    targetUrl: url,
   });
 
-  // In a real implementation, this would trigger the actual discovery orchestrator
-  // For now, we'll simulate events for the frontend demo
-  setTimeout(() => {
-    discoveryEvents.emit('discovery-event', {
-      type: 'observation',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      data: 'Observed UI elements',
-    });
-  }, 1000);
+  // Run discovery in background
+  runDiscovery(goal, url)
+    .then((result) => {
+      // Generate artifact from trace
+      const artifact = generateArtifact(result.trace);
 
-  setTimeout(() => {
-    discoveryEvents.emit('discovery-event', {
-      type: 'llm_action',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      action: {
-        type: 'navigate',
-        value: targetUrl,
-      },
+      discoveryEvents.emit('discovery-event', {
+        type: 'completed',
+        timestamp: new Date().toISOString(),
+        success: result.success,
+        capability: artifact,
+        stepsCount: result.trace.steps.length,
+      });
+    })
+    .catch((error) => {
+      discoveryEvents.emit('discovery-event', {
+        type: 'failed',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     });
-  }, 2000);
 
-  setTimeout(() => {
-    discoveryEvents.emit('discovery-event', {
-      type: 'action_completed',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      status: 'success',
-    });
-  }, 3000);
-
-  setTimeout(() => {
-    discoveryEvents.emit('discovery-event', {
-      type: 'completed',
-      timestamp: new Date().toISOString(),
-      capability: {
-        id: 'demo-capability',
-        version: 1,
-        goal,
-        steps: [
-          {
-            stepId: 'step-1',
-            order: 1,
-            action: { type: 'navigate', value: targetUrl },
-          },
-        ],
-      },
-    });
-  }, 5000);
-
-  return res.json({ status: 'started', goal, targetUrl });
+  return res.json({ status: 'started', goal, targetUrl: url });
 });
 
 export { router as discoveryRouter, discoveryEvents };

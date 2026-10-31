@@ -30,9 +30,13 @@ The system is organized into three main phases:
 **Operator UI & API (Final Implementation)**
 - React-based operator UI for goal input, status display, and live event streaming
 - Express API endpoints for discovery and replay with Server-Sent Events (SSE)
+- Discovery API connected to real orchestrator (requires OPENAI_API_KEY)
+- Replay API connected to real ReplayEngine (no LLM)
+- SSE events reflect actual backend execution progress
+- Frontend displays real success, failure, error, and human-handoff states
 - Headed browser mode support for live visibility during demonstrations
-- API integration tests for request validation and event delivery
-- Live event streaming: discovery_started, observation, llm_action, action_started, action_completed, checkpoint, retry, failure, handoff_created, human_control, resume, completed
+- API integration tests with mocked orchestrators (to avoid requiring real browser/LLM in tests)
+- Live event streaming: discovery_started, completed, failed, replay_started, completed, failed
 
 **Architecture Diagram:**
 

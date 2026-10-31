@@ -1,5 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { EventEmitter } from 'events';
+import { ReplayEngine } from '../replay/engine.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const router = Router() as Router;
 const replayEvents = new EventEmitter();
@@ -29,6 +32,27 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
     return res.status(400).json({ error: 'Artifact ID is required' });
   }
 
+  // Load artifact
+  let artifact;
+  try {
+    // Try to load from file if artifactId is a path
+    if (artifactId.includes('/') || artifactId.includes('\\')) {
+      const artifactPath = artifactId;
+      const artifactContent = readFileSync(artifactPath, 'utf-8');
+      artifact = JSON.parse(artifactContent);
+    } else {
+      // Try to load from example artifacts
+      const artifactPath = join(process.cwd(), 'apps/api/src/capability/examples', `${artifactId}.json`);
+      const artifactContent = readFileSync(artifactPath, 'utf-8');
+      artifact = JSON.parse(artifactContent);
+    }
+  } catch (error) {
+    return res.status(404).json({ 
+      error: 'Artifact not found',
+      message: `Could not load artifact: ${artifactId}`
+    });
+  }
+
   // Emit replay started event
   replayEvents.emit('replay-event', {
     type: 'replay_started',
@@ -37,43 +61,28 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
     enableHandoff,
   });
 
-  // Simulate replay events for frontend demo
-  setTimeout(() => {
-    replayEvents.emit('replay-event', {
-      type: 'action_started',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      action: { type: 'navigate' },
+  // Run replay in background
+  const engine = new ReplayEngine(enableHandoff || false);
+  
+  engine.executeReplay(artifact)
+    .then((result) => {
+      replayEvents.emit('replay-event', {
+        type: 'completed',
+        timestamp: new Date().toISOString(),
+        success: result.success,
+        executedSteps: result.executedSteps.length,
+        failure: result.failure,
+        outputs: result.outputs,
+        evidencePath: result.evidencePath,
+      });
+    })
+    .catch((error) => {
+      replayEvents.emit('replay-event', {
+        type: 'failed',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     });
-  }, 1000);
-
-  setTimeout(() => {
-    replayEvents.emit('replay-event', {
-      type: 'action_completed',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      status: 'success',
-    });
-  }, 2000);
-
-  setTimeout(() => {
-    replayEvents.emit('replay-event', {
-      type: 'checkpoint',
-      timestamp: new Date().toISOString(),
-      step: 1,
-      condition: 'url matches target',
-      passed: true,
-    });
-  }, 2500);
-
-  setTimeout(() => {
-    replayEvents.emit('replay-event', {
-      type: 'completed',
-      timestamp: new Date().toISOString(),
-      success: true,
-      executedSteps: 1,
-    });
-  }, 3000);
 
   return res.json({ status: 'started', artifactId, enableHandoff });
 });

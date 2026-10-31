@@ -14,6 +14,11 @@ interface ExecutionEvent {
   success?: boolean;
   executedSteps?: number;
   data?: string;
+  error?: string;
+  stepsCount?: number;
+  failure?: any;
+  outputs?: any;
+  evidencePath?: string;
 }
 
 export default function App() {
@@ -23,11 +28,13 @@ export default function App() {
   const [events, setEvents] = useState<ExecutionEvent[]>([]);
   const [capability, setCapability] = useState<any>(null);
   const [enableHandoff, setEnableHandoff] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const startDiscovery = async () => {
     setStatus('DISCOVERING');
     setEvents([]);
     setCapability(null);
+    setErrorMessage('');
 
     try {
       const response = await fetch('http://localhost:3000/api/discovery/start', {
@@ -37,7 +44,8 @@ export default function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start discovery');
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Failed to start discovery');
       }
 
       // Connect to SSE events
@@ -51,15 +59,21 @@ export default function App() {
           setStatus('COMPLETED');
           setCapability(data.capability);
           eventSource.close();
+        } else if (data.type === 'failed') {
+          setStatus('FAILED');
+          setErrorMessage(data.error || 'Discovery failed');
+          eventSource.close();
         }
       };
 
       eventSource.onerror = () => {
         setStatus('FAILED');
+        setErrorMessage('Connection to discovery events failed');
         eventSource.close();
       };
     } catch (error) {
       setStatus('FAILED');
+      setErrorMessage(error instanceof Error ? error.message : 'Discovery error');
       console.error('Discovery error:', error);
     }
   };
@@ -68,16 +82,18 @@ export default function App() {
     setStatus('REPLAYING');
     setEvents([]);
     setCapability(null);
+    setErrorMessage('');
 
     try {
       const response = await fetch('http://localhost:3000/api/replay/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ artifactId: 'demo-capability', enableHandoff }),
+        body: JSON.stringify({ artifactId: 'mariner-pro-course', enableHandoff }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start replay');
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Failed to start replay');
       }
 
       // Connect to SSE events
@@ -90,15 +106,21 @@ export default function App() {
         if (data.type === 'completed') {
           setStatus('COMPLETED');
           eventSource.close();
+        } else if (data.type === 'failed') {
+          setStatus('FAILED');
+          setErrorMessage(data.error || 'Replay failed');
+          eventSource.close();
         }
       };
 
       eventSource.onerror = () => {
         setStatus('FAILED');
+        setErrorMessage('Connection to replay events failed');
         eventSource.close();
       };
     } catch (error) {
       setStatus('FAILED');
+      setErrorMessage(error instanceof Error ? error.message : 'Replay error');
       console.error('Replay error:', error);
     }
   };
@@ -130,7 +152,7 @@ export default function App() {
                 className="w-full p-3 border rounded-md"
                 value={targetUrl}
                 onChange={(e) => setTargetUrl(e.target.value)}
-                placeholder="Target application URL"
+                placeholder="Target application URL (optional, uses MARINER_PRO_URL from .env if not provided)"
               />
             </div>
 
@@ -168,7 +190,14 @@ export default function App() {
 
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">Live Status</h2>
-              <div className="text-2xl font-bold text-blue-600">{status}</div>
+              <div className={`text-2xl font-bold ${
+                status === 'COMPLETED' ? 'text-green-600' :
+                status === 'FAILED' ? 'text-red-600' :
+                'text-blue-600'
+              }`}>{status}</div>
+              {errorMessage && (
+                <div className="mt-2 text-sm text-red-600">{errorMessage}</div>
+              )}
             </div>
           </div>
 
@@ -196,6 +225,17 @@ export default function App() {
                       {event.data && (
                         <div className="mt-1 text-gray-700">{event.data}</div>
                       )}
+                      {event.error && (
+                        <div className="mt-1 text-red-600">Error: {event.error}</div>
+                      )}
+                      {event.success !== undefined && (
+                        <div className={`mt-1 ${event.success ? 'text-green-600' : 'text-red-600'}`}>
+                          Success: {event.success ? 'Yes' : 'No'}
+                        </div>
+                      )}
+                      {event.executedSteps !== undefined && (
+                        <div className="mt-1 text-gray-700">Executed Steps: {event.executedSteps}</div>
+                      )}
                     </div>
                   ))
                 )}
@@ -206,9 +246,9 @@ export default function App() {
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-semibold mb-4">Capability Artifact</h2>
                 <div className="space-y-2 text-sm">
-                  <div><strong>ID:</strong> {capability.id}</div>
-                  <div><strong>Version:</strong> {capability.version}</div>
-                  <div><strong>Goal:</strong> {capability.goal}</div>
+                  <div><strong>Name:</strong> {capability.metadata?.name}</div>
+                  <div><strong>Version:</strong> {capability.version?.version}</div>
+                  <div><strong>Goal:</strong> {capability.metadata?.description}</div>
                   <div><strong>Steps:</strong> {capability.steps?.length || 0}</div>
                 </div>
               </div>
