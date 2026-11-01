@@ -7,7 +7,41 @@ vi.mock('../discovery/orchestrator.js', () => ({
 
 vi.mock('../replay/engine.js', () => ({
   ReplayEngine: vi.fn().mockImplementation(() => ({
-    executeReplay: vi.fn(),
+    executeReplay: vi.fn().mockResolvedValue({
+      success: true,
+      executedSteps: [],
+      failure: undefined,
+      outputs: {},
+      evidencePath: 'evidence/test',
+      runId: 'test-run-id',
+      capabilityName: 'Test',
+      capabilityVersion: 1,
+      currentStep: 0,
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 0,
+    }),
+  })),
+}));
+
+// Mock the example artifact to avoid requiring the actual module in tests
+vi.mock('../capability/examples/mariner-pro-course.js', () => ({
+  marinerProExampleArtifact: {
+    metadata: { name: 'Mariner Pro Example' },
+    version: { version: 1 },
+    target: { url: 'https://example.com' },
+    steps: [],
+    inputs: [],
+    outputs: [],
+    safety: { allowedDomains: [] },
+  },
+}));
+
+// Mock Zod validation
+vi.mock('../capability/schema.js', () => ({
+  safeValidateCapabilityArtifact: vi.fn((artifact) => ({
+    success: true,
+    data: artifact,
   })),
 }));
 
@@ -84,7 +118,7 @@ describe('API - Replay', () => {
     mockFetch.mockReset();
   });
 
-  it('should start replay with valid artifact ID', async () => {
+  it('should start replay with valid artifact ID (mariner-pro-course)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: 'started', artifactId: 'mariner-pro-course', enableHandoff: false }),
@@ -102,6 +136,24 @@ describe('API - Replay', () => {
     expect(data.artifactId).toBe('mariner-pro-course');
   });
 
+  it('should start replay with valid artifact ID (mariner-pro)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: 'started', artifactId: 'mariner-pro', enableHandoff: false }),
+    });
+
+    const response = await fetch('http://localhost:3000/api/replay/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artifactId: 'mariner-pro', enableHandoff: false }),
+    });
+
+    expect(response.ok).toBe(true);
+    const data = await response.json();
+    expect(data.status).toBe('started');
+    expect(data.artifactId).toBe('mariner-pro');
+  });
+
   it('should reject replay without artifact ID', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
@@ -116,5 +168,21 @@ describe('API - Replay', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it('should return 404 for unknown artifact ID', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Artifact not found', message: 'Could not load artifact: unknown-artifact' }),
+    });
+
+    const response = await fetch('http://localhost:3000/api/replay/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ artifactId: 'unknown-artifact', enableHandoff: false }),
+    });
+
+    expect(response.status).toBe(404);
   });
 });

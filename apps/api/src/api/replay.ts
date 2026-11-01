@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { EventEmitter } from 'events';
 import { ReplayEngine } from '../replay/engine.js';
+import { safeValidateCapabilityArtifact } from '../capability/schema.js';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { marinerProExampleArtifact } from '../capability/examples/mariner-pro-course.js';
 
 const router = Router() as Router;
 const replayEvents = new EventEmitter();
@@ -35,13 +37,16 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
   // Load artifact
   let artifact;
   try {
-    // Try to load from file if artifactId is a path
-    if (artifactId.includes('/') || artifactId.includes('\\')) {
+    // Try to load from built-in example artifacts
+    if (artifactId === 'mariner-pro-course' || artifactId === 'mariner-pro') {
+      artifact = marinerProExampleArtifact;
+    } else if (artifactId.includes('/') || artifactId.includes('\\')) {
+      // Load from file path
       const artifactPath = artifactId;
       const artifactContent = readFileSync(artifactPath, 'utf-8');
       artifact = JSON.parse(artifactContent);
     } else {
-      // Try to load from example artifacts
+      // Try to load from JSON file in examples directory
       const artifactPath = join(process.cwd(), 'apps/api/src/capability/examples', `${artifactId}.json`);
       const artifactContent = readFileSync(artifactPath, 'utf-8');
       artifact = JSON.parse(artifactContent);
@@ -50,6 +55,15 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
     return res.status(404).json({ 
       error: 'Artifact not found',
       message: `Could not load artifact: ${artifactId}`
+    });
+  }
+
+  // Validate artifact using Zod schema
+  const validationResult = safeValidateCapabilityArtifact(artifact);
+  if (!validationResult.success) {
+    return res.status(400).json({ 
+      error: 'Invalid artifact',
+      message: validationResult.error.message
     });
   }
 
@@ -64,7 +78,7 @@ router.post('/start', async (req: Request, res: Response): Promise<Response> => 
   // Run replay in background
   const engine = new ReplayEngine(enableHandoff || false);
   
-  engine.executeReplay(artifact)
+  engine.executeReplay(validationResult.data)
     .then((result) => {
       replayEvents.emit('replay-event', {
         type: 'completed',
