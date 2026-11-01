@@ -32,6 +32,9 @@ async function main() {
     if (artifactPath === 'mariner-pro') {
       artifact = marinerProExampleArtifact;
       console.log('Using built-in Mariner Pro example artifact');
+      console.log('NOTE: This artifact uses a placeholder URL (https://mariner-pro.example.com)');
+      console.log('The artifact is for schema validation and replay logic testing only.');
+      console.log('For real replay, use a real target URL in a custom artifact.');
     } else {
       // Load artifact from file
       const { readFile } = await import('fs/promises');
@@ -43,6 +46,7 @@ async function main() {
     console.log(`Capability: ${artifact.metadata.name}`);
     console.log(`Version: ${artifact.version.version}`);
     console.log(`Steps: ${artifact.steps.length}`);
+    console.log(`Target URL: ${artifact.target.url}`);
     console.log('===========================');
     
     const result = await engine.executeReplay(artifact, {
@@ -66,6 +70,15 @@ async function main() {
       console.log(`✗ Failure category: ${result.failure?.category}`);
       console.log(`✗ Failure message: ${result.failure?.message}`);
       console.log(`✗ Failed at step: ${result.failure?.stepId}`);
+      
+      // Provide helpful context for common failures
+      if (result.failure?.message?.includes('net::ERR_NAME_NOT_RESOLVED') || 
+          result.failure?.message?.includes('ENOTFOUND')) {
+        console.log('');
+        console.log('This failure is expected if the target URL is not accessible.');
+        console.log('The Mariner Pro example artifact uses a placeholder URL for testing.');
+        console.log('For real replay, provide an artifact with a real target URL.');
+      }
     }
     
   } catch (error) {

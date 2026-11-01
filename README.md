@@ -243,7 +243,7 @@ Run all tests:
 pnpm test
 ```
 
-The project has 189 automated tests covering:
+The project has 192 automated tests covering:
 - Capability schema validation
 - Discovery action schemas
 - Observation sanitization (sensitive data redaction)

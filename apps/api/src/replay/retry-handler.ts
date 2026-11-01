@@ -12,7 +12,7 @@ export class RetryHandler {
     action: () => Promise<{ success: boolean; description: string; error?: string; data?: unknown }>,
     policy: RetryPolicy
   ): Promise<{ success: boolean; description: string; error?: string; data?: unknown }> {
-    let lastError: Error | null = null;
+    let lastError: string | null = null;
 
     for (let attempt = 1; attempt <= policy.maxAttempts; attempt++) {
       try {
@@ -23,20 +23,21 @@ export class RetryHandler {
 
         // Check if error is retryable
         if (result.error && !this.isRetryable(result.error, policy)) {
+          lastError = result.error;
           break; // Non-retryable error
         }
 
-        lastError = new Error(result.error);
+        lastError = result.error || 'Unknown error';
 
         // Apply backoff
         if (attempt < policy.maxAttempts) {
           await this.applyBackoff(policy.backoffStrategy, policy.backoffMs, attempt);
         }
       } catch (error) {
-        lastError = error as Error;
+        lastError = error instanceof Error ? error.message : String(error);
 
         // Check if error is retryable
-        if (!this.isRetryable((error as Error).message, policy)) {
+        if (!this.isRetryable(lastError, policy)) {
           break;
         }
 
@@ -49,7 +50,7 @@ export class RetryHandler {
     return {
       success: false,
       description: `Failed after ${policy.maxAttempts} attempts`,
-      error: lastError?.message || 'Unknown error',
+      error: lastError || 'Unknown error',
     };
   }
 

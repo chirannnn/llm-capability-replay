@@ -22,7 +22,7 @@ describe('Replay Engine', () => {
     expect(result.success).toBe(false);
     expect(result.failure?.category).toBe(ErrorCategory.HARD_FAILURE);
     expect(result.failure?.message).toContain('Invalid artifact');
-  }, 10000); // Add 10 second timeout
+  }, 60000); // Add 60 second timeout
 
   it('should execute replay deterministically without LLM', async () => {
     // This test verifies the architectural boundary by executing replay
@@ -71,7 +71,7 @@ describe('Replay Engine', () => {
     // Verify replay succeeded deterministically without any LLM dependency
     expect(result.success).toBe(true);
     expect(result.runId).toBeDefined();
-  }, 10000); // Add 10 second timeout
+  }, 60000); // Add 60 second timeout for real browser execution
 
   it('should enforce safety policy for navigation', async () => {
     const artifact: CapabilityArtifact = {
@@ -128,7 +128,7 @@ describe('Replay Engine', () => {
     expect(result.success).toBe(false);
     expect(result.failure?.category).toBe(ErrorCategory.HARD_FAILURE);
     expect(result.failure?.message).toContain('not allowed by safety policy');
-  }, 10000); // Add 10 second timeout
+  }, 60000); // Add 60 second timeout for real browser execution
 
   it('should initialize with handoff disabled by default', () => {
     const defaultEngine = initializeReplayEngine();

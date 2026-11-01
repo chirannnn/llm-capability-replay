@@ -65,10 +65,11 @@ export class ActionExecutor {
           };
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         success: false,
         description: `Failed to execute ${action.type}`,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       };
     }
   }
@@ -97,11 +98,20 @@ export class ActionExecutor {
       };
     }
 
-    await this.page.goto(action.value, { waitUntil: 'networkidle', timeout: action.timeout });
-    return {
-      success: true,
-      description: `Navigated to ${action.value}`,
-    };
+    try {
+      await this.page.goto(action.value, { waitUntil: 'networkidle', timeout: action.timeout });
+      return {
+        success: true,
+        description: `Navigated to ${action.value}`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        description: `Failed to navigate to ${action.value}`,
+        error: errorMessage,
+      };
+    }
   }
 
   /**

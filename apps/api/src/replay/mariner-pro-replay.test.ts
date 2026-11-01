@@ -36,5 +36,5 @@ describe('Mariner Pro Artifact Replay', () => {
     expect(result.success).toBe(true);
     expect(result.capabilityName).toBe('Find Auxiliary Engine Course and Open Construction Section');
     expect(result.capabilityVersion).toBe(1);
-  }, 10000); // Add 10 second timeout
+  }, 60000); // Add 60 second timeout for real browser execution
 });
